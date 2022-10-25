@@ -1,0 +1,25 @@
+---
+- name: Reniciar db
+  service:
+    name: postgresql-14.service
+    state: restarted
+
+- name: Stop zabbix-server
+  service:
+    name: zabbix-server.service
+    state: stopped
+
+- name: Stop httpd
+  service:
+    name: httpd.service
+    state: stopped
+
+- name: Start zabbix-server
+  service:
+    name: zabbix-server.service
+    state: started
+
+- name: Start httpd
+  service:
+    name: httpd.service
+    state: started

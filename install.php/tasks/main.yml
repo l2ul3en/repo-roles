@@ -1,0 +1,20 @@
+---
+# tasks file for install.php
+- name: Deshabilitando module php rhel8
+  command: dnf -y module disable php
+  args:
+    warn: False
+
+- name: Habilitando module 7.4
+  command: dnf -y module enable php:7.4
+  args:
+    warn: False
+
+- name: Instalando module php:7.4/devel
+  dnf:
+    name: '@php:7.4/devel'
+    state: present
+  notify:
+    - Habilitando php
+    - Iniciando php
+...

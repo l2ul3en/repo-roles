@@ -1,0 +1,9 @@
+#!/bin/bash
+
+/usr/sbin/logrotate -f /etc/logrotate.d/nagiosctl
+$code=$?
+
+if [ $code != 0 ]; then
+        /bin/logger -t LOGGER "No se puedo realizar la rotacion de log exitcode [$code]"
+fi
+exit 0

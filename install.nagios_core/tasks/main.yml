@@ -1,0 +1,383 @@
+---
+- name: Instalando dependencias
+  dnf:
+    name: '{{ item }}'
+    state: latest
+  loop: '{{ packages_nagios }}'
+
+- name: Cambiando selinux a permissive mode
+  selinux:
+    policy: targeted
+    state: permissive
+
+- name: Habilitando puerto http,https
+  firewalld:
+    service: '{{ item }}'
+    permanent: yes
+    state: enabled
+    immediate: yes
+  loop:
+    - http
+    - https
+    - nrpe
+  tags: firewall
+
+- name: Creando directorios de descarga
+  file:
+    path: '{{ item }}'
+    state: directory
+  loop:
+    - '{{ download_dir_plugins }}'
+#    - '{{ download_dir_nrpe }}'
+    - '{{ download_dir_nagios }}'
+    - '{{ download_dir_pnp4 }}'
+
+- name: Agregando usuario nagios
+  user:
+    name: nagios
+    shell: /sbin/nologin
+    state: present
+
+- name: Agregando usuario apache a grupo nagios
+  user:
+    name: apache
+    groups: nagios
+    append: yes
+
+#Descargar fuentes de github
+- name: Descargando nagios core
+  get_url:
+    dest: '{{ download_dir_nagios }}/{{ nagioscore }}.tar.gz'
+    url: https://github.com/NagiosEnterprises/nagioscore/releases/download/nagios-4.4.6/nagios-4.4.6.tar.gz
+
+- name: Descargando nagios plugins
+  get_url:
+    dest: '{{ download_dir_plugins }}/{{ plusrc }}.tar.gz'
+    url: https://github.com/nagios-plugins/nagios-plugins/releases/download/release-2.4.0/nagios-plugins-2.4.0.tar.gz
+
+#- name: Descargando nagios nrpe
+#  get_url:
+#    dest: '{{ download_dir_nrpe }}/{{ nrpesrc }}.tar.gz'
+#    url: https://github.com/NagiosEnterprises/nrpe/releases/download/nrpe-4.0.3/nrpe-4.0.3.tar.gz
+
+#Desempaquetando fuentes
+- name: Desempaquetando nagios core
+  unarchive:
+    src: '{{ download_dir_nagios }}/{{ nagioscore }}.tar.gz'
+    dest: '{{ download_dir_nagios }}'
+    remote_src: yes
+
+- name: Desempaquetando nagios plugins
+  unarchive:
+    src: '{{ download_dir_plugins }}/{{ plusrc }}.tar.gz'
+    dest: '{{ download_dir_plugins }}'
+    remote_src: yes
+
+#- name: Desempaquetando nagios nrpe
+#  unarchive:
+#    src: '{{ download_dir_nrpe }}/{{ nrpesrc }}.tar.gz'
+#    dest: '{{ download_dir_nrpe }}'
+#    remote_src: yes
+
+- name: Configure nagios core
+  command: sh configure 
+  args:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}' 
+
+- name: Configure nagios core - make all
+  make:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}' 
+    target: all
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure nagios core - make install
+  make:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}'
+    target: install
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure nagios core - make install-daemoninit
+  make:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}'
+    target: install-daemoninit
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure nagios core - make install-commandmode
+  make:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}'
+    target: install-commandmode
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure nagios core - make install-config
+  make:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}'
+    target: install-config
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure nagios core - make install-webconf
+  make:
+    chdir: '{{ download_dir_nagios }}/{{ nagioscore }}'
+    target: install-webconf
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Instalando libreria passlib
+  pip:
+    name: passlib
+
+- name: Creando usuario nagios para acceso web
+  htpasswd:
+    path: /usr/local/nagios/etc/htpasswd.users
+    name: nagiosadmin
+    password: '{{ nagiosadmin_password }}'
+
+- name: Habilitando servicio nagios,httpd,php-fpm
+  service:
+    name: '{{ item }}'
+    enabled: yes
+    state: started
+  loop:
+    - php-fpm
+    - httpd
+    - nagios
+
+#Instalando pluggins
+- name: Descargando rpm epel
+  get_url:
+    dest: '{{ ansible_env.HOME }}/epel-release-latest-8.noarch.rpm'
+    url: https://dl.fedoraproject.org/pub/epel/epel-release-latest-8.noarch.rpm
+
+- name: Instalando llave repo epel
+  rpm_key:
+    state: present
+    key: https://dl.fedoraproject.org/pub/epel/RPM-GPG-KEY-EPEL-8
+
+- name: Instalando repo epel
+  dnf:
+    name: '{{ ansible_env.HOME }}/epel-release-latest-8.noarch.rpm'
+    state: latest
+
+- name: Instalando dependecias para pluggins
+  dnf:
+    name: '{{ item }}'
+    state: latest
+  loop: '{{ packages_plugins }}'
+
+- name: Habilitando repositorio codeready
+  rhsm_repository:
+    name: codeready-builder-for-rhel-8-x86_64-rpms
+
+- name: Instalando perl-Net-SNMP
+  dnf:
+    name: perl-Net-SNMP
+    state: latest
+
+- name: Configure plugins
+  command: sh configure 
+  args:
+    chdir: '{{ download_dir_plugins }}/nagios-{{ plusrc }}' 
+
+- name: Configure plugins - make
+  make:
+    chdir: '{{ download_dir_plugins }}/nagios-{{ plusrc }}' 
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure plugins - make install
+  make:
+    chdir: '{{ download_dir_plugins }}/nagios-{{ plusrc }}' 
+    target: install
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Reiniciando servicio nagios
+  service:
+    name: nagios
+    state: restarted
+
+#Instalando PNP4
+- name: Instalando dependencias para PNP4Nagios
+  dnf:
+    name: '{{ item }}'
+    state: latest
+  loop: '{{ packages_pnp4 }}'
+
+- name: Descargando fuentes PNP4Nagios
+  get_url:
+    dest: '{{ download_dir_pnp4 }}'
+    url: https://github.com/lingej/pnp4nagios/archive/0.6.26.tar.gz
+
+- name: Desempaquetando PNP4Nagios
+  unarchive:
+    src: '{{ download_dir_pnp4 }}/{{ pnp4src }}.tar.gz'
+    dest: '{{ download_dir_pnp4 }}'
+    remote_src: yes
+
+- name: Configure PNP4Nagios
+  command: sh configure 
+  args:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+
+- name: Configure PNP4Nagios - Make
+  make:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure PNP4Nagios - Make all
+  make:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+    target: all
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure PNP4Nagios - Make install
+  make:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+    target: install
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure PNP4Nagios - Make install-webconf
+  make:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+    target: install-webconf
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure PNP4Nagios - Make install-config
+  make:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+    target: install-config
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Configure PNP4Nagios - Make install-init
+  make:
+    chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+    target: install-init
+    params:
+      NUM_THREADS: '{{ ansible_processor_vcpus }}'
+
+- name: Reiniciando daemon-reload
+  systemd:
+    daemon_reload: yes
+
+- name: Habilitando servicio npcd
+  service:
+    name: npcd.service
+    enabled: yes
+    state: started
+
+- name: Reiniciando httpd
+  service:
+    name: httpd.service
+    state: restarted
+
+#Ajustes a PNP4Nagios
+- name: Eliminando archivo install.php
+  file:
+    path: /usr/local/pnp4nagios/share/install.php
+    state: absent
+
+- name: Reemplazando a __Services_JSON en json.php
+  replace:
+    path: /usr/local/pnp4nagios/share/application/lib/json.php
+    regexp: '(.*)class Services_JSON(.*)'
+    replace: '\1class __Services_JSON\2'
+    owner: nagios
+    group: nagios
+
+- name: Habilitando performance data - nagios.cfg
+  lineinfile:
+    path: /usr/local/nagios/etc/nagios.cfg
+    regexp: 'process_performance_data=0'
+    line: 'process_performance_data=1'
+
+#- name: Ajustes varios - nagios.cfg
+#  command: '{{ item }}'
+#  loop: 
+#    - sed -i 's/process_performance_data=0/process_performance_data=1/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/#host_perfdata_file=/host_perfdata_file=/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^host_perfdata_file=.*/host_perfdata_file=\/usr\/local\/pnp4nagios\/var\/service-perfdata/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^#host_perfdata_file_template=.*/host_perfdata_file_template=DATATYPE::HOSTPERFDATA\\tTIMET::$TIMET$\\tHOSTNAME::$HOSTNAME$\\tHOSTPERFDATA::$HOSTPERFDATA$\\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\\tHOSTSTATE::$HOSTSTATE$\\tHOSTSTATETYPE::$HOSTSTATETYPE$/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/#host_perfdata_file_mode=/host_perfdata_file_mode=/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^#host_perfdata_file_processing_interval=.*/host_perfdata_file_processing_interval=15/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^#host_perfdata_file_processing_command=.*/host_perfdata_file_processing_command=process-host-perfdata-file-bulk-npcd/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/#service_perfdata_file=/service_perfdata_file=/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^service_perfdata_file=.*/service_perfdata_file=\/usr\/local\/pnp4nagios\/var\/service-perfdata/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^#service_perfdata_file_template=.*/service_perfdata_file_template=DATATYPE::SERVICEPERFDATA\\tTIMET::$TIMET$\\tHOSTNAME::$HOSTNAME$\\tSERVICEDESC::$SERVICEDESC$\\tSERVICEPERFDATA::$SERVICEPERFDATA$\\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\\tHOSTSTATE::$HOSTSTATE$\\tHOSTSTATETYPE::$HOSTSTATETYPE$\\tSERVICESTATE::$SERVICESTATE$\\tSERVICESTATETYPE::$SERVICESTATETYPE$/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/#service_perfdata_file_mode=/service_perfdata_file_mode=/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^#service_perfdata_file_processing_interval=.*/service_perfdata_file_processing_interval=15/g' /usr/local/nagios/etc/nagios.cfg
+#    - sed -i 's/^#service_perfdata_file_processing_command=.*/service_perfdata_file_processing_command=process-service-perfdata-file-bulk-npcd/g' /usr/local/nagios/etc/nagios.cfg
+
+- name: Ajustes varios - nagios.cfg
+  blockinfile:
+    path: /usr/local/nagios/etc/nagios.cfg
+    insertafter: EOF
+    block:  |
+      host_perfdata_file=/usr/local/pnp4nagios/var/host-perfdata
+      host_perfdata_file_template=DATATYPE::HOSTPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tHOSTPERFDATA::$HOSTPERFDATA$\tHOSTCHECKCOMMAND::$HOSTCHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$
+      host_perfdata_file_mode=a
+      host_perfdata_file_processing_interval=15
+      host_perfdata_file_processing_command=process-host-perfdata-file-bulk-npcd
+
+      service_perfdata_file=/usr/local/pnp4nagios/var/service-perfdata
+      service_perfdata_file_template=DATATYPE::SERVICEPERFDATA\tTIMET::$TIMET$\tHOSTNAME::$HOSTNAME$\tSERVICEDESC::$SERVICEDESC$\tSERVICEPERFDATA::$SERVICEPERFDATA$\tSERVICECHECKCOMMAND::$SERVICECHECKCOMMAND$\tHOSTSTATE::$HOSTSTATE$\tHOSTSTATETYPE::$HOSTSTATETYPE$\tSERVICESTATE::$SERVICESTATE$\tSERVICESTATETYPE::$SERVICESTATETYPE$
+      service_perfdata_file_mode=a
+      service_perfdata_file_processing_interval=15
+      service_perfdata_file_processing_command=process-service-perfdata-file-bulk-npcd
+
+- name: Ajustes varios - command.cfg
+  blockinfile:
+    path: /usr/local/nagios/etc/objects/commands.cfg
+    insertafter: EOF
+    block: |
+      define command {
+      command_name    process-service-perfdata-file-bulk-npcd
+      command_line    /bin/mv /usr/local/pnp4nagios/var/service-perfdata /usr/local/pnp4nagios/var/spool/service-perfdata.$TIMET$
+      }
+
+      define command {
+      command_name    process-host-perfdata-file-bulk-npcd
+      command_line    /bin/mv /usr/local/pnp4nagios/var/host-perfdata /usr/local/pnp4nagios/var/spool/host-perfdata.$TIMET$
+      }
+
+- name: 'Reemplazo a if(is_array($pages) && sizeof($pages) > 0 ){ en data.php'
+  replace:
+    path: /usr/local/pnp4nagios/share/application/models/data.php
+    regexp: '(.*)if\(sizeof\(\$pages\)(\s+)\>(\s+)0(\s+)\)\{(.*)'
+    replace: '\1if(is_array($pages) && sizeof($pages) > 0 ){\5'
+    owner: nagios
+    group: nagios
+
+#Nagios Core Web Interface Integration
+- name: Ajustes varios - templates.cfg
+  blockinfile:
+    path: /usr/local/nagios/etc/objects/templates.cfg
+    insertafter: EOF
+    block:  |
+      define host {
+      name       host-pnp
+      action_url /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=_HOST_
+      register   0
+      }
+
+- name: Ajustes varios - agregando template a host y service - templates.cfg
+  lineinfile:
+    path: /usr/local/nagios/etc/objects/templates.cfg
+    insertafter: '(.*)name(\s+){{ item.name }}(.*)'
+    line: '   use    {{ item.use }}'
+    #backup: yes
+  loop: [{name: generic-host, use: host-pnp}, {name: generic-service, use: service-pnp}]
+    
+- name: Reiniciando nagios
+  service:
+    name: nagios
+    state: restarted
+...

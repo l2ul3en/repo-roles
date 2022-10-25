@@ -1,0 +1,8 @@
+---
+# vars file for install.postgresql---
+pg:
+  package:  'postgresql14-server'
+  cmd:  '/usr/pgsql-14/bin/postgresql-14-setup'
+  serv: 'postgresql-14.service'
+
+...

@@ -1,0 +1,42 @@
+---
+# tasks file for install.postgresql
+- name: Instalando varios paquetes
+  dnf:
+    name: '{{ item }}'
+    state: latest
+  loop:
+    - "{{ ['vim', 'bash-completion', 'policycoreutils-python-utils', 'net-tools', 'setroubleshoot-server', 'langpacks-en', 'python3-psycopg2', 'unzip'] }}"
+
+- rpm_key: 
+    state: present
+    key:  https://download.postgresql.org/pub/repos/yum/RPM-GPG-KEY-PGDG-14
+
+- name: Instalando repo pgsql
+  dnf:
+    name: https://download.postgresql.org/pub/repos/yum/reporpms/EL-8-x86_64/pgdg-redhat-repo-latest.noarch.rpm
+    state: present
+
+- name: Deshabilintando modulo postgresql rhel8
+  command: dnf -y module disable postgresql
+  args:
+    warn: false
+
+- name: Instalando {{ pg.package }}
+  dnf:
+    name: '{{ pg.package }}'
+    state: latest
+
+- name: Iniciando cluster pgsql..
+  command: '{{ pg.cmd }} initdb'
+  notify:
+  - Habilitando servicio bd
+  - Iniciando servicio bd
+
+- name: Deshabilitando repo pgsql
+  command: 'dnf config-manager pgdg* --disable'
+  args:
+    warn: false
+
+- meta: flush_handlers
+
+...

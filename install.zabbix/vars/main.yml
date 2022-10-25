@@ -1,0 +1,5 @@
+---
+# vars file for install.zabbix
+zabbix: {user: zabbix , pass: P455w0rd , db: zabbix_db}
+
+...

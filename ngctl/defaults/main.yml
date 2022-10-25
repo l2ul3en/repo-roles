@@ -1,0 +1,21 @@
+---
+#directorio usados por la app
+dir_base: /data/
+dir_fuente: /data/source/
+dir_respaldo: /data/backup/
+dir_temporal: /data/cache/
+dir_objetos: /data/objects/
+
+#grupo de administracion para ejecutar la app
+grupo_noc: wheel
+#grupo_noc: nocvapit
+
+#archivo de log para la app
+logfile: /var/log/nagios/nagiosctl.log
+
+#directorios base para la app
+skel: ['{{ dir_fuente }}','{{ dir_respaldo }}', '{{ dir_temporal }}','{{ dir_objetos }}','/var/log/nagios']
+
+#ubicacion de enlace simbolico
+enlace_simbolico: /usr/local/bin/nagiosctl
+...

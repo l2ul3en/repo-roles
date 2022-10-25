@@ -1,0 +1,97 @@
+---
+- name: Instalando git
+  dnf:
+    name: git
+    state: latest
+  tags: home
+
+- name: Creando grupo {{ grupo_noc }}
+  group:
+    name: '{{ grupo_noc }}'
+    state: present
+  tags: home
+
+- name: Creando directorios para ambiente
+  file:
+    path: '{{ item }}'
+    state: directory
+    mode: '0775'
+    owner: root
+    group: '{{ grupo_noc }}'
+  loop: '{{ skel }}'
+
+- name: Creando archivo log
+  file:
+    path: '{{ logfile }}'
+    state: touch
+    mode: '0664'
+    owner: root
+    group: '{{ grupo_noc }}'
+    modification_time: preserve
+    access_time: preserve
+
+- name: Copiar archivo logrotate
+  template:
+    src: nagiosctl.j2
+    dest: /etc/logrotate.d/nagiosctl
+    mode: '0644'
+  tags: home
+
+- name: Copiar archivo cronjob monthly
+  copy:
+    src: cronjob_nagiosctl
+    dest: /etc/cron.monthly/
+    mode: '0755'
+  tags: home
+
+- name: verificar directorio ngctl
+  shell: 'ls {{ dir_fuente }} | wc -l'
+  register: directorio
+
+- debug: var=directorio
+
+- name: Eliminando enlace simbolico a la app {{ enlace_simbolico }}
+  file:
+    path: '{{ enlace_simbolico }}'
+    state: absent
+  when: directorio.stdout | int > 0
+  
+- name: comprimiendo directorio antiguo
+  archive:
+    path: '{{ dir_fuente }}ngctl'
+    dest: "{{ dir_respaldo }}ngctl-{{ '%Y%m%d%H%M%S' | strftime(ansible_date_time.epoch) }}.tgz"
+    format: gz
+  when: directorio.stdout | int > 0
+
+- name: Eliminando directorio antiguo de la app {{ dir_fuente }}ngctl
+  file:
+    path: '{{ dir_fuente }}ngctl'
+    state: absent
+  when: directorio.stdout | int > 0
+
+- name: Descargar app de github
+  git:
+    repo: https://github.com/l2ul3en/nagiosctl.git
+    dest: '{{ dir_fuente }}ngctl'
+
+- name: Copiando archivo de configuracion de rutas constantes.py
+  template:
+    src: constantes.py.j2
+    dest: '{{ dir_fuente }}ngctl/config/constantes.py'
+    force: True
+
+- name: Configurando permisos sobre directorio {{ dir_base }}
+  file:
+    path: '{{ dir_base }}'
+    state: directory
+    recurse: True
+    owner: root
+    group: '{{ grupo_noc }}'
+    mode: 'u=rwX,g=rwXs,o=r'
+
+- name: Creando enlace simbolico a la app {{ enlace_simbolico }}
+  file:
+    src: '{{ dir_fuente }}ngctl/progs/parser.py'
+    dest: '{{ enlace_simbolico }}'
+    state: link
+...

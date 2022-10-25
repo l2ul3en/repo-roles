@@ -1,0 +1,58 @@
+---
+- rpm_key:
+    key: https://packagecloud.io/timescale/timescaledb/gpgkey
+  tags: tsdb
+
+- name: Copiando repo
+  copy:
+    src: timescale_timescaledb.repo
+    dest: /etc/yum.repos.d/
+
+- name: Instalando timescaledb-2-postgresql-14
+  dnf:
+    name: timescaledb-2-postgresql-14
+    state: latest
+  tags: tsdb
+
+- name: Copiando archivos de config - pg_hba.conf postgresql.conf
+  become_user: postgres
+  copy:
+    src: '/var/lib/pgsql/14/data/{{ item }}'
+    dest: '/var/lib/pgsql/14/data/{{ item }}.preTSDB'
+    remote_src: yes
+  loop:
+    - pg_hba.conf
+    - postgresql.conf
+
+- name: Ejecutando timescaledb-tune
+  command: timescaledb-tune --pg-config=/usr/pgsql-14/bin/pg_config -yes
+
+- name: Ajuste de configuracion - max_connections
+  lineinfile:
+    path: /var/lib/pgsql/14/data/postgresql.conf
+    regexp: '^max_connections'
+    line: 'max_connections = 100'
+  notify:
+    - Reniciar db
+  
+- meta: flush_handlers
+  
+- name: Creando extension TSDB
+  become_user: zabbix
+  postgresql_query:
+    db: zabbix_db
+    login_user: zabbix
+    login_password: P455w0rd
+    query: CREATE EXTENSION IF NOT EXISTS timescaledb CASCADE;
+  notify:
+    - Stop zabbix-server
+    - Stop httpd
+
+- meta: flush_handlers
+
+- name: Creando hipertablas en la BD
+  shell: cat /usr/share/doc/zabbix-sql-scripts/postgresql/timescaledb.sql | sudo -u zabbix psql zabbix_db
+  notify:
+    - Start zabbix-server
+    - Start httpd
+...

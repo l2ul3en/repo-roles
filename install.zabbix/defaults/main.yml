@@ -1,0 +1,21 @@
+---
+# defaults file for install.zabbix
+pkg:
+  - zabbix-server-pgsql
+  - zabbix-web-pgsql
+  - zabbix-apache-conf
+  - zabbix-sql-scripts
+  - zabbix-selinux-policy
+  - zabbix-agent
+
+services:
+#  - zabbix-server
+#  - zabbix-agent
+#  - postgresql
+  - http
+  - https
+
+pgsql: postgresql-14.service
+daemon: {servidor: zabbix-server.service , agente: zabbix-agent.service}
+red_adm_zabbix: 192.168.20.0/24
+...

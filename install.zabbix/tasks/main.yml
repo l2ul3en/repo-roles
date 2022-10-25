@@ -1,0 +1,99 @@
+---
+# tasks file for install.zabbix
+- rpm_key:
+    state: present
+    key: '{{ item }}' 
+  loop: 
+    - https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX-A14FE591
+    - https://repo.zabbix.com/RPM-GPG-KEY-ZABBIX
+
+- name: Instalando Repo
+  dnf:
+    name: https://repo.zabbix.com/zabbix/6.0/rhel/8/x86_64/zabbix-release-6.0-1.el8.noarch.rpm
+    state: latest
+
+- name: 'Instalando zabbix server,agent,database,front end'
+  dnf:
+    name: '{{ pkg }}'
+    state: latest
+
+- name: Habilitando boolean selinux
+  seboolean:
+    name: '{{ item }}'
+    state: yes
+    persistent: yes
+  loop:
+    - httpd_can_connect_zabbix
+    - httpd_can_network_connect_db
+
+- name: Habilitando puertos de firewall http
+  firewalld:
+    service: http
+    state: enabled
+    permanent: yes
+    immediate: yes
+
+- name: Habilitando puertos de firewall https
+  firewalld:
+    service: https
+    state: enabled
+    permanent: yes
+    immediate: yes
+
+- name: Creando usuario de BD
+  postgresql_user:
+    name: '{{ zabbix.user }}'
+    password: '{{ zabbix.pass }}'
+  become_user: postgres
+
+- name: Creando la BD
+  postgresql_db:
+    name: '{{ zabbix.db }}'
+    encoding: UTF-8
+    owner: '{{ zabbix.user }}'
+  become_user: postgres
+
+- name: Ejecutando script server.sql.gz - creacion de tablas
+  shell: 'zcat /usr/share/doc/zabbix-sql-scripts/postgresql/server.sql.gz | sudo -u {{ zabbix.user }} psql {{ zabbix.db }}'
+
+- name: Ajustando posgresql.conf
+  lineinfile:
+    path: /var/lib/pgsql/14/data/postgresql.conf
+    insertafter: "^#listen_addresses"
+    line: "listen_addresses = '*'"
+    state: present
+
+- name: Ajustando zabbix_server.conf - DBName
+  lineinfile:
+    path: /etc/zabbix/zabbix_server.conf
+    regexp: "^DBName=zabbix"
+    line: "DBName={{ zabbix.db }}"
+    state: present
+
+- name: Ajustando zabbix_server.conf - DBPassword
+  lineinfile:
+    path: /etc/zabbix/zabbix_server.conf
+    insertafter: "^#(\\s+)DBPassword="
+    line: 'DBPassword = {{ zabbix.pass }}'
+    state: present
+
+- name: Ajustando pg_hba.conf - creando entrada para conexion
+  postgresql_pg_hba:
+    dest: /var/lib/pgsql/14/data/pg_hba.conf
+    contype: host
+    users: '{{ zabbix.user }}'
+    source: '{{ red_adm_zabbix }}'
+    databases: '{{ zabbix.db }}'
+    method: scram-sha-256
+    create: true
+
+  notify:
+    - Habilitando server
+    - Iniciando server
+    - Reiniciando db
+    - Habilitando agent
+    - Iniciando agent
+    - Habilitando httpd
+    - Iniciando httpd
+
+...

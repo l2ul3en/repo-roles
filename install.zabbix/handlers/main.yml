@@ -1,0 +1,38 @@
+---
+# handlers file for install.zabbix
+- name: Habilitando server
+  service:
+    name: '{{ daemon.servidor }}'
+    enabled: yes
+
+- name: Iniciando server
+  service:
+    name: '{{ daemon.servidor }}'
+    state: started
+
+- name: Reiniciando db
+  service:
+    name: '{{ pgsql }}'
+    state: restarted
+
+- name: Habilitando agent
+  service:
+    name: '{{ daemon.agente }}'
+    enabled: yes
+
+- name: Iniciando agent
+  service:
+    name: '{{ daemon.agente }}'
+    state: started
+
+- name: Habilitando httpd
+  service:
+    name: httpd.service
+    enabled: yes
+
+- name: Iniciando httpd
+  service:
+    name: httpd.service
+    state: started
+
+...

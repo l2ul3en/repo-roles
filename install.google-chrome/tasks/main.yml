@@ -1,0 +1,15 @@
+---
+# tasks file for install.google-chrome
+- name: Copiando repo
+  copy:
+    src: google-chrome.repo
+    dest: /etc/yum.repos.d/
+    owner: root
+    group: root
+    mode: '0644'
+
+- name: Instalando google-chrome
+  dnf:
+    name: google-chrome-stable
+    state: latest
+...

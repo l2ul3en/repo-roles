@@ -1,0 +1,11 @@
+---
+# handlers file for install.postgresql
+- name: Habilitando servicio bd
+  service:
+    name: '{{ pg.serv }}'
+    enabled: True
+- name: Iniciando servicio bd
+  service:
+    name: '{{ pg.serv }}'
+    state: started
+...

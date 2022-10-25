@@ -1,0 +1,22 @@
+---
+download_dir_plugins: '{{ ansible_env.HOME }}/plugins'
+plusrc: plugins-2.4.0
+
+download_dir_nrpe: '{{ ansible_env.HOME }}/nrpe'
+nrpesrc: nrpe-4.0.3
+
+download_dir_nagios: '{{ ansible_env.HOME }}/nagios'
+nagioscore: nagios-4.4.6
+
+download_dir_pnp4: '{{ ansible_env.HOME }}/pnp4'
+pnp4src: pnp4nagios-0.6.26
+
+nagios_server_ip: 192.168.20.10
+nagiosadmin_password: password
+
+#packages: ['perl', 'httpd', 'wget', 'unzip', 'glibc', 'automake', 'glibc', 'glibc-common', 'gettext', 'autoconf', 'php', 'gcc', 'gd', 'gd-devel', 'openssl-devel', 'unzip', 'net-snmp', 'net-snmp-utils', 'make', 'perl-Net-SNMP']
+
+packages_nagios: ['gcc', 'glibc', 'glibc-common', 'perl', 'httpd', 'php', 'wget', 'gd', 'gd-devel', 'tar', 'unzip', 'bash-completion']
+packages_plugins: ['gcc', 'glibc', 'glibc-common', 'make', 'gettext', 'automake', 'autoconf', 'openssl-devel', 'net-snmp', 'net-snmp-utils']
+packages_pnp4: ['rrdtool', 'perl-rrdtool', 'perl-Time-HiRes', 'php-gd', 'php-xml']
+...
