@@ -172,9 +172,9 @@
     state: latest
   loop: '{{ packages_plugins }}'
 
-- name: Habilitando repositorio codeready
-  rhsm_repository:
-    name: codeready-builder-for-rhel-8-x86_64-rpms
+  #- name: Habilitando repositorio codeready
+  #  rhsm_repository:
+  #    name: codeready-builder-for-rhel-8-x86_64-rpms
 
 - name: Instalando perl-Net-SNMP
   dnf:
@@ -210,28 +210,33 @@
     name: '{{ item }}'
     state: latest
   loop: '{{ packages_pnp4 }}'
+  tags: pnp4
 
 - name: Descargando fuentes PNP4Nagios
   get_url:
     dest: '{{ download_dir_pnp4 }}'
     url: https://github.com/lingej/pnp4nagios/archive/0.6.26.tar.gz
+  tags: pnp4
 
 - name: Desempaquetando PNP4Nagios
   unarchive:
     src: '{{ download_dir_pnp4 }}/{{ pnp4src }}.tar.gz'
     dest: '{{ download_dir_pnp4 }}'
     remote_src: yes
+  tags: pnp4
 
 - name: Configure PNP4Nagios
   command: sh configure 
   args:
     chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
+  tags: pnp4
 
 - name: Configure PNP4Nagios - Make
   make:
     chdir: '{{ download_dir_pnp4 }}/{{ pnp4src }}' 
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
+  tags: pnp4
 
 - name: Configure PNP4Nagios - Make all
   make:
@@ -239,6 +244,7 @@
     target: all
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
+  tags: pnp4
 
 - name: Configure PNP4Nagios - Make install
   make:
@@ -246,6 +252,7 @@
     target: install
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
+  tags: pnp4
 
 - name: Configure PNP4Nagios - Make install-webconf
   make:
@@ -253,6 +260,7 @@
     target: install-webconf
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
+  tags: pnp4
 
 - name: Configure PNP4Nagios - Make install-config
   make:
@@ -260,6 +268,7 @@
     target: install-config
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
+  tags: pnp4
 
 - name: Configure PNP4Nagios - Make install-init
   make:
@@ -267,27 +276,32 @@
     target: install-init
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
+  tags: pnp4
 
 - name: Reiniciando daemon-reload
   systemd:
     daemon_reload: yes
+  tags: pnp4
 
 - name: Habilitando servicio npcd
   service:
     name: npcd.service
     enabled: yes
     state: started
+  tags: pnp4
 
 - name: Reiniciando httpd
   service:
     name: httpd.service
     state: restarted
+  tags: pnp4
 
 #Ajustes a PNP4Nagios
 - name: Eliminando archivo install.php
   file:
     path: /usr/local/pnp4nagios/share/install.php
     state: absent
+  tags: pnp4
 
 - name: Reemplazando a __Services_JSON en json.php
   replace:
@@ -296,12 +310,14 @@
     replace: '\1class __Services_JSON\2'
     owner: nagios
     group: nagios
+  tags: pnp4
 
 - name: Habilitando performance data - nagios.cfg
   lineinfile:
     path: /usr/local/nagios/etc/nagios.cfg
     regexp: 'process_performance_data=0'
     line: 'process_performance_data=1'
+  tags: pnp4
 
 #- name: Ajustes varios - nagios.cfg
 #  command: '{{ item }}'
@@ -336,6 +352,7 @@
       service_perfdata_file_mode=a
       service_perfdata_file_processing_interval=15
       service_perfdata_file_processing_command=process-service-perfdata-file-bulk-npcd
+  tags: pnp4
 
 - name: Ajustes varios - command.cfg
   blockinfile:
@@ -351,6 +368,7 @@
       command_name    process-host-perfdata-file-bulk-npcd
       command_line    /bin/mv /usr/local/pnp4nagios/var/host-perfdata /usr/local/pnp4nagios/var/spool/host-perfdata.$TIMET$
       }
+  tags: pnp4
 
 - name: 'Reemplazo a if(is_array($pages) && sizeof($pages) > 0 ){ en data.php'
   replace:
@@ -359,6 +377,7 @@
     replace: '\1if(is_array($pages) && sizeof($pages) > 0 ){\5'
     owner: nagios
     group: nagios
+  tags: pnp4
 
 #Nagios Core Web Interface Integration
 - name: Ajustes varios - templates.cfg
@@ -376,6 +395,7 @@
       action_url /pnp4nagios/index.php/graph?host=$HOSTNAME$&srv=$SERVICEDESC$
       register   0
       }
+  tags: pnp4
 
 - name: Ajustes varios - agregando template a host y service - templates.cfg
   lineinfile:
@@ -384,6 +404,7 @@
     line: '   use    {{ item.use }}'
     #backup: yes
   loop: [{name: generic-host, use: host-pnp}, {name: generic-service, use: service-pnp}]
+  tags: pnp4
     
 #- name: Ajuste Bug v4.4.7 - check_for_updates=0 - nagios.cfg
 #  replace:
@@ -396,5 +417,5 @@
   service:
     name: nagios
     state: restarted
-  tags: reply
+  tags: pnp4
 ...

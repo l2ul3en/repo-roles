@@ -1,14 +1,14 @@
 ---
-download_dir_plugins: '{{ ansible_env.HOME }}/plugins'
+download_dir_plugins: '/opt/plugins'
 plusrc: plugins-2.4.0
 
-download_dir_nrpe: '{{ ansible_env.HOME }}/nrpe'
+download_dir_nrpe: '/opt/nrpe'
 nrpesrc: nrpe-4.0.3
 
-download_dir_nagios: '{{ ansible_env.HOME }}/nagios'
+download_dir_nagios: '/opt/nagios'
 nagioscore: nagios-4.4.8
 
-download_dir_pnp4: '{{ ansible_env.HOME }}/pnp4'
+download_dir_pnp4: '/opt/pnp4'
 pnp4src: pnp4nagios-0.6.26
 
 nagios_server_ip: 192.168.20.10
