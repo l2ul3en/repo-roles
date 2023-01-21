@@ -44,10 +44,6 @@
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
 
-- name: Reiniciando daemon-reload
-  systemd:
-    daemon_reload: yes
-
 - name: Eliminando {{ nagios_version }}.tar.gz
   file:
     path: '{{ download_dir_nagios }}/{{ nagios_version }}.tar.gz'
@@ -56,6 +52,6 @@
 - name: Iniciando nagios
   systemd:
     name: nagios
-    state: restarted
-  tags: ng
+    state: started
+    daemon_reload: yes
 ...
