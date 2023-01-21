@@ -1,0 +1,8 @@
+---
+
+download_dir_nagios: '/opt'
+nagios_version: nagios-4.4.9
+
+#grupo de administracion
+group_admin: vapit
+...
