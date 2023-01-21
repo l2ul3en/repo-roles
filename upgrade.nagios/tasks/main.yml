@@ -3,7 +3,7 @@
 - name: Descargando {{ nagios_version }}
   get_url:
     dest: '{{ download_dir_nagios }}/'
-    url: https://github.com/NagiosEnterprises/nagios_version/releases/download/{{ nagios_version }}/{{ nagios_version }}.tar.gz
+    url: https://github.com/NagiosEnterprises/nagioscore/releases/download/{{ nagios_version }}/{{ nagios_version }}.tar.gz
 
 #Desempaquetando fuentes
 - name: Desempaquetando {{ nagios_version }}
