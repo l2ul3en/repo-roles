@@ -7,8 +7,8 @@ dir_temporal: /data/cache/
 dir_objetos: /data/objects/
 
 #grupo de administracion para ejecutar la app
-grupo_noc: wheel
-#grupo_noc: nocvapit
+#grupo_noc: wheel
+grupo_noc: vapit
 
 #archivo de log para la app
 logfile: /var/log/nagios/nagiosctl.log

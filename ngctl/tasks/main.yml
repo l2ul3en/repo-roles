@@ -3,7 +3,6 @@
   dnf:
     name: git
     state: latest
-  tags: home
 
 - name: Creando grupo {{ grupo_noc }}
   group:

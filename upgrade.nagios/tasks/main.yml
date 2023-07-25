@@ -1,9 +1,14 @@
 ---
 #Descargar fuentes de github
-- name: Descargando {{ nagios_version }}
-  get_url:
-    dest: '{{ download_dir_nagios }}/'
-    url: https://github.com/NagiosEnterprises/nagioscore/releases/download/{{ nagios_version }}/{{ nagios_version }}.tar.gz
+#- name: Descargando {{ nagios_version }}
+#  get_url:
+#    dest: '{{ download_dir_nagios }}/'
+#    url: https://github.com/NagiosEnterprises/nagioscore/releases/download/{{ nagios_version }}/{{ nagios_version }}.tar.gz
+
+- name: Copiando codigo fuente {{ nagios_version }}
+  copy:
+    src: /tmp/{{ nagios_version }}.tar.gz
+    dest: '{{ download_dir_nagios }}'
 
 #Desempaquetando fuentes
 - name: Desempaquetando {{ nagios_version }}
@@ -44,10 +49,6 @@
     params:
       NUM_THREADS: '{{ ansible_processor_vcpus }}'
 
-- name: Reiniciando daemon-reload
-  systemd:
-    daemon_reload: yes
-
 - name: Eliminando {{ nagios_version }}.tar.gz
   file:
     path: '{{ download_dir_nagios }}/{{ nagios_version }}.tar.gz'
@@ -56,6 +57,7 @@
 - name: Iniciando nagios
   systemd:
     name: nagios
-    state: restarted
+    state: started
+    daemon_reload: yes
   tags: ng
 ...
